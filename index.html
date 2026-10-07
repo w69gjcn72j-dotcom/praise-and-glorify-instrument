@@ -199,6 +199,34 @@ button.sound{
   padding:9px 18px;cursor:pointer;
 }
 
+/* --- the numbers: two octaves of jianpu, stacked --- */
+.keys{margin-top:4px}
+.oct{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:5px}
+.note{
+  position:relative;background:transparent;border:1px solid var(--rule-soft);
+  padding:17px 0 10px;cursor:pointer;font:inherit;color:inherit;
+  display:flex;flex-direction:column;align-items:center;gap:3px;transition:.12s;
+}
+.note .nnum{
+  font-family:var(--mono);font-size:clamp(.72rem,2.9vw,1.04rem);
+  color:var(--bone-dim);white-space:nowrap;line-height:1;
+}
+.note .nlet{
+  font-family:var(--mono);font-size:clamp(.46rem,1.9vw,.64rem);
+  color:var(--bone-dim);opacity:.55;white-space:nowrap;line-height:1;
+}
+.note.inkey{border-color:var(--rule)}
+.note.inkey .nnum{color:var(--brass)}
+.note.tonic{border-bottom:2px solid var(--brass)}
+.note.lit{background:rgba(209,162,76,.16);border-color:var(--brass)}
+.note.lit .nnum{color:var(--bone)}
+.odot{
+  position:absolute;top:6px;left:50%;transform:translateX(-50%);
+  width:3px;height:3px;border-radius:50%;background:var(--brass-deep);
+}
+.note.inkey .odot{background:var(--brass)}
+.keyfoot{display:flex;justify-content:space-between;gap:14px;margin-top:10px}
+
 /* --- readout --- */
 .readout{
   margin-top:34px;padding:20px 0;
@@ -324,7 +352,16 @@ details[open] summary::before{content:"− "}
 </div>
 
 <div class="section">
-  <div class="section-title"><span class="mono">Plate II &nbsp;·&nbsp; Progressions</span><span class="line"></span></div>
+  <div class="section-title"><span class="mono">Plate II &nbsp;·&nbsp; The Numbers</span><span class="line"></span></div>
+  <div class="keys" id="keys"></div>
+  <div class="keyfoot">
+    <span class="mono" id="keyfoot-left"></span>
+    <span class="mono">· = upper octave</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title"><span class="mono">Plate III &nbsp;·&nbsp; Progressions</span><span class="line"></span></div>
   <div class="band" style="margin-bottom:22px">
     <div class="ctrl">
       <span class="mono">Tempo</span>
@@ -345,7 +382,7 @@ details[open] summary::before{content:"− "}
 </div>
 
 <div class="section">
-  <div class="section-title"><span class="mono">Plate III &nbsp;·&nbsp; Ear Training</span><span class="line"></span></div>
+  <div class="section-title"><span class="mono">Plate IV &nbsp;·&nbsp; Ear Training</span><span class="line"></span></div>
   <div class="band" style="margin-bottom:22px">
     <div class="ctrl">
       <span class="mono">Level</span>
@@ -376,6 +413,7 @@ details[open] summary::before{content:"− "}
     <li><b>Why numerals.</b> A numeral names a chord by its office in the key, not its letter. I–V–vi–IV is one shape in every key — so a song in G and a song in D become the same lesson.</li>
     <li><b>Reading the plate.</b> Capitals are major, lowercase minor, lowercase with ° diminished. Stroke weight follows: heavy major, fine minor, broken diminished. Height rises with the degree.</li>
     <li><b>The minor keys</b> use the natural minor — i, ii°, III, iv, v, VI, VII. A minor is built from exactly the notes of C major, which is the point worth making: same seven notes, different home. Most worship charts in a minor key raise the v to a major V for the final cadence; sound that from <i>Outside the key</i>.</li>
+    <li><b>The numbers.</b> Two octaves of 簡譜, the lower on the bottom row and the upper above it, with a dot over the upper octave as a numbered score marks it. The seven notes of the key read brass, the five chromatic notes sit dim between them, and a brass underline marks the tonic. In a major key 1 is the tonic; in a minor key the numbering is la-based, as Chinese hymnals write it — the tonic is 6, so in A minor 1 is C. Tap a number and the readout names which chord is built on it, which is the bridge between the numbers a Chinese-service singer reads and the numerals an accompanist plays.</li>
     <li><b>Outside the key.</b> Any of the twelve roots, major or minor, labelled with its numeral relative to the current tonic — bVII, #IV, V of a minor key, and so on. Use it to show why a borrowed chord feels like a door opening.</li>
     <li><b>Tempo and click.</b> Set a slow tempo, turn the click on, and let a trainee play the progression along with it. That is Week 3 in a single screen. Each chord lasts two beats.</li>
     <li><b>Start here.</b> Hide the names, play degrees 1, 4 and 5 only, and let them hear <i>home / away / tension</i> before the minors are introduced.</li>
@@ -763,6 +801,84 @@ function buildPlate(){
   }
 }
 
+/* ---- the numbers: two octaves of jianpu, stacked ---- */
+var NOTE_LABELS = ["1","1♯","2","2♯","3","4","4♯","5","5♯","6","6♯","7"];
+
+function pretty(s){ return s.replace("#","♯").replace("b","♭"); }
+
+/* which pitch class the number 1 names.
+   Major: the tonic. Minor: la-based, as Chinese numbered scores are written —
+   the tonic becomes 6, so 1 is the relative major. */
+function doPC(){
+  var k = keyObj(), t = ((k.root % 12) + 12) % 12;
+  return k.mode === "minor" ? (t + 3) % 12 : t;
+}
+function doMidi(){
+  var m = 48 + doPC();
+  while(m < 55) m += 12;
+  while(m > 66) m -= 12;
+  return m;
+}
+function keyPCs(){
+  var L = keyObj().letters, s = {};
+  for(var i=0;i<7;i++){ s[LETTER_PC[L[i]]] = i; }
+  return s;
+}
+
+function buildKeys(){
+  var wrap = document.getElementById("keys");
+  wrap.innerHTML = "";
+  var pcs = keyPCs(), base = doMidi(), dpc = doPC();
+  var tonicPC = ((keyObj().root % 12) + 12) % 12;
+
+  for(var oct=1; oct>=0; oct--){            /* upper octave sits on top */
+    var row = document.createElement("div");
+    row.className = "oct";
+    for(var i=0;i<12;i++){
+      (function(off, o){
+        var pc = (dpc + off) % 12;
+        var inKey = pcs.hasOwnProperty(pc);
+        var midi = base + off + o*12;
+        var letter = inKey ? keyObj().letters[pcs[pc]] : CHROMA[pc].n;
+        var b = document.createElement("button");
+        b.className = "note" + (inKey ? " inkey" : "") + (pc === tonicPC ? " tonic" : "");
+        b.setAttribute("aria-label", NOTE_LABELS[off] + " " + pretty(letter));
+        b.innerHTML =
+          (o ? '<i class="odot"></i>' : '') +
+          '<span class="nnum">' + NOTE_LABELS[off] + '</span>' +
+          '<span class="nlet' + (show.names ? "" : " veil") + '">' + pretty(letter) + '</span>';
+        b.addEventListener("click", function(){ onNote(midi, off, pc, letter, b); });
+        row.appendChild(b);
+      })(i, oct);
+    }
+    wrap.appendChild(row);
+  }
+
+  var k = keyObj();
+  document.getElementById("keyfoot-left").textContent =
+    k.mode === "minor"
+      ? "1 = " + pretty(CHROMA[dpc].n) + " · tonic is 6"
+      : "1 = " + pretty(CHROMA[dpc].n) + " · tonic is 1";
+}
+
+function onNote(midi, off, pc, letter, el){
+  resume();
+  voice(midi, ctx.currentTime + 0.02, 1.9, 0.22);
+  el.classList.add("lit");
+  setTimeout(function(){ el.classList.remove("lit"); }, 420);
+
+  var M = mode();
+  var tonicPC = ((keyObj().root % 12) + 12) % 12;
+  var di = M.scale.indexOf((pc - tonicPC + 12) % 12);
+  if(di >= 0){
+    setReadout(NOTE_LABELS[off] + " · " + pretty(letter),
+      "Degree " + (di+1) + " of " + keyLabel() + " — the note the chord " + M.numerals[di] + " is built on.");
+  } else {
+    setReadout(NOTE_LABELS[off] + " · " + pretty(letter),
+      "A chromatic note, outside " + keyLabel() + ". No numeral of this key is built on it.");
+  }
+}
+
 function buildProgs(){
   var M = mode(), wrap = document.getElementById("progs");
   wrap.innerHTML = "";
@@ -960,6 +1076,7 @@ buildKeySelect();
 buildOutsideSelect();
 buildTicks();
 buildPlate();
+buildKeys();
 buildProgs();
 refreshOutside();
 
@@ -971,7 +1088,7 @@ function refreshOutside(){
 
 document.getElementById("keysel").addEventListener("change", function(){
   stopSequence();
-  buildPlate(); buildProgs(); refreshOutside();
+  buildPlate(); buildKeys(); buildProgs(); refreshOutside();
   setReadout(keyLabel(), "The letters have changed; the numerals have not. That is the whole idea.");
 });
 document.getElementById("outroot").addEventListener("change", refreshOutside);
@@ -1012,7 +1129,7 @@ Array.prototype.forEach.call(document.querySelectorAll('.chip[data-toggle]'), fu
     var k = c.getAttribute("data-toggle");
     show[k] = !show[k];
     c.classList.toggle("on", show[k]);
-    buildPlate();
+    buildPlate(); buildKeys();
   });
 });
 
