@@ -1,50 +1,13 @@
-/* Chord & Numeral — offline cache.
-   Bump CACHE when you change any file, or phones will keep serving the old one. */
-var CACHE = "chord-numeral-v3";
-var FILES = [
-  "./",
-  "index.html",
-  "manifest.webmanifest",
-  "icon-192.png",
-  "icon-512.png",
-  "icon-180.png",
-  "icon-maskable-512.png",
-  "favicon-32.png",
-  "favicon.ico"
-];
-
-self.addEventListener("install", function(e){
-  self.skipWaiting();
-  e.waitUntil(
-    caches.open(CACHE).then(function(c){
-      return Promise.all(FILES.map(function(f){
-        return c.add(f).catch(function(){ /* a missing optional file must not fail the install */ });
-      }));
-    })
-  );
-});
-
+/* Chord & Numeral has moved to https://glorify.kogarah.church/chords/
+   This worker replaces the old offline cache: it clears it, removes itself,
+   and reloads any open page so the visitor is sent to the new address. */
+self.addEventListener("install", function(){ self.skipWaiting(); });
 self.addEventListener("activate", function(e){
   e.waitUntil(
     caches.keys().then(function(keys){
-      return Promise.all(keys.map(function(k){
-        return k === CACHE ? null : caches.delete(k);
-      }));
-    }).then(function(){ return self.clients.claim(); })
-  );
-});
-
-self.addEventListener("fetch", function(e){
-  if(e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request).then(function(hit){
-      return hit || fetch(e.request).then(function(res){
-        var copy = res.clone();
-        caches.open(CACHE).then(function(c){ c.put(e.request, copy); }).catch(function(){});
-        return res;
-      }).catch(function(){
-        return caches.match("index.html");
-      });
-    })
+      return Promise.all(keys.map(function(k){ return caches.delete(k); }));
+    }).then(function(){ return self.registration.unregister(); })
+      .then(function(){ return self.clients.matchAll({ type:"window" }); })
+      .then(function(cs){ cs.forEach(function(c){ if(c.navigate){ c.navigate(c.url); } }); })
   );
 });

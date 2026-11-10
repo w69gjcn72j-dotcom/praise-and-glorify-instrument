@@ -1,3 +1,5 @@
+> **Moved.** Chord & Numeral now lives in the `praise-and-glorify` repository, in `chords/`, and is served at https://glorify.kogarah.church/chords/ . This repository only redirects the old address.
+
 # Chord & Numeral — deployment
 
 An ear-training web app for the **Praise & Glorify** accompanist intensive, St Paul's Anglican Kogarah.
